@@ -1,6 +1,6 @@
 # Makefile
 
-SRC = ./src/main.c ./src/database.c
+SRC = ./src/*.c
 OUT = ./main
 
 # Default target
