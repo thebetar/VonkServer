@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include "./database.h"
 
 #define PORT 8080
 #define BACKLOG 5
@@ -11,6 +12,7 @@ struct client_request_data
 {
     int client_socket;
     char method[16];
+    char url[256];
     char body[1024];
 };
 
@@ -27,51 +29,6 @@ char *get_headers(char *message)
             "%s",
             (int)strlen(message), message);
     return http_headers;
-}
-
-char *get_data()
-{
-    // Read data from data.txt
-    static char data[1024];
-    FILE *file = fopen("data.txt", "r");
-
-    if (file == NULL)
-    {
-        perror("Could not open data.txt");
-        strcpy(data, "Error reading data");
-        return data;
-    }
-
-    if (fgets(data, sizeof(data), file) == NULL)
-    {
-        strcpy(data, "Data file is empty");
-    }
-
-    fclose(file);
-
-    return data;
-}
-
-char *post_data(char *data)
-{
-    // Write data to data.txt
-    FILE *file = fopen("data.txt", "a+");
-
-    if (file == NULL)
-    {
-        perror("Could not open data.txt for writing");
-        return "Error writing data";
-    }
-
-    if (fputs(data, file) == EOF && fputs("\n", file) == EOF)
-    {
-        perror("Could not write data to data.txt");
-        fclose(file);
-        return "Error writing data";
-    }
-
-    fclose(file);
-    return "Data written successfully";
 }
 
 struct client_request_data receive_data(int client_socket)
@@ -94,8 +51,12 @@ struct client_request_data receive_data(int client_socket)
     char method[16];
     sscanf(request_buffer, "%15s", method);
     strcpy(result.method, method);
-
     printf("HTTP method: %s\n", method);
+
+    char url[256];
+    sscanf(request_buffer, "%*s %255s", url);
+    strcpy(result.url, url);
+    printf("URL: %s\n", url);
 
     char *body = strstr(request_buffer, "\r\n\r\n");
 
@@ -123,15 +84,41 @@ void send_data(int client_socket, struct client_request_data request_data)
 
     char *message;
 
+    // Remove the first slash
+    if (request_data.url[0] == '/')
+    {
+        memmove(request_data.url, request_data.url + 1, strlen(request_data.url));
+    }
+
+    // Check if there is still a slash left
+    if (strchr(request_data.url, '/') != NULL)
+    {
+        // If there is a slash, return an error message
+        message = "STATUS: Slash is not allowed in URL";
+        printf("Error: %s\n", message);
+        send(client_socket, get_headers(message), strlen(get_headers(message)), 0);
+        return;
+    }
+
+    // Check which HTTP method was used
     if (strcmp(request_data.method, "POST") == 0)
     {
-        message = post_data(request_data.body);
+        message = post_data(request_data.url, request_data.body);
+    }
+    else if (strcmp(request_data.method, "DELETE") == 0)
+    {
+        message = delete_data(request_data.url, request_data.body);
+    }
+    else if (strcmp(request_data.method, "GET") == 0)
+    {
+        message = get_data(request_data.url);
     }
     else
     {
-        message = get_data();
+        message = get_data(request_data.url);
     }
 
+    // Prepare HTTP headers with the message
     char *headers = get_headers(message);
 
     if (send(client_socket, headers, strlen(headers), 0) < 0)

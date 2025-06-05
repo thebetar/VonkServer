@@ -1,1 +1,3 @@
 main
+data/*.txt
+!data/data.txt
