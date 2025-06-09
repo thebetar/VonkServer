@@ -117,7 +117,7 @@ void loop()
   }
   else
   {
-    digitalWrite(LED_PIN, HIGH); // turn the LED off
+    digitalWrite(LED_PIN, LOW); // turn the LED off
   }
 
   // --- Send Temperature to Server ---
@@ -133,6 +133,6 @@ void loop()
     Serial.println("WiFi not connected, skipping data upload.");
   }
 
-  // Send current data every minute
-  delay(60000);
+  // Send current data every 30 minutes
+  delay(30 * 60 * 1000);
 }
