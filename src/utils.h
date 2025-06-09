@@ -8,5 +8,5 @@ struct client_request_data
 
 char *get_current_ip();
 struct client_request_data receive_data(int client_socket);
-char *get_headers(char *message);
+char *get_headers(char *message, char *content_type);
 void send_data(int client_socket, struct client_request_data request_data);

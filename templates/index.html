@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Sensors</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+	</head>
+	<body class="bg-gray-50">
+		<div id="app"></div>
+
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+		<script type="module">
+			import { onMount, createSignal, createEffect, For } from 'https://esm.sh/solid-js@1.8.1';
+			import { render } from 'https://esm.sh/solid-js@1.8.1/web';
+			import html from 'https://esm.sh/solid-js@1.8.1/html';
+
+			const SENSORS = [
+				{
+					name: 'temperature',
+					color: 'rgb(255, 99, 132)',
+				},
+				{
+					name: 'humidity',
+					color: 'rgb(54, 162, 235)',
+				},
+				{
+					name: 'light',
+					color: 'rgb(255, 206, 86)',
+				},
+			];
+
+			async function fetchSensor(name) {
+				try {
+					const response = await fetch(`/${name}`);
+
+					if (!response.ok) {
+						throw new Error(`Error fetching sensor ${name}: ${response.statusText}`);
+					}
+
+					return await response.text();
+				} catch (error) {
+					console.error(error);
+					return null;
+				}
+			}
+
+			function SensorCard(props) {
+				let canvasRef;
+				let chartInstance;
+
+				onMount(() => {
+					if (!canvasRef || props.data.length === 0) {
+						return;
+					}
+
+					const ctx = canvasRef.getContext('2d');
+					const labels = props.data.map((_, index) => index + 1);
+
+					chartInstance = new Chart(ctx, {
+						type: 'line',
+						data: {
+							labels: labels,
+							datasets: [
+								{
+									label: props.name,
+									data: props.data,
+									borderColor: props.color,
+									backgroundColor: props.color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
+									tension: 0.1,
+								},
+							],
+						},
+						options: {
+							responsive: true,
+							plugins: {
+								title: {
+									display: true,
+									text: `Latest ${props.name.charAt(0).toUpperCase() + props.name.slice(1)} Data`,
+								},
+							},
+						},
+					});
+				});
+
+				createEffect(() => {
+					if (!chartInstance || props.data.length == 0) {
+						return;
+					}
+
+					const labels = props.data.map((_, index) => index + 1);
+					chartInstance.data.labels = labels;
+					chartInstance.data.datasets[0].data = props.data;
+					chartInstance.update();
+				});
+
+				return html`
+					<div class="bg-white rounded-lg shadow-md p-4">
+						<h3 class="text-lg font-semibold text-gray-800">
+							${props.name.charAt(0).toUpperCase() + props.name.slice(1)}
+						</h3>
+						<div class="p-4">
+							${props.data.length > 0
+								? html`<canvas ref=${el => (canvasRef = el)}></canvas>
+										<p class="text-gray-500 text-sm mt-2">
+											Last updated: ${new Date().toISOString()}
+										</p>`
+								: html`
+										<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+											No data available for ${props.name}.
+										</div>
+								  `}
+						</div>
+					</div>
+				`;
+			}
+
+			function App() {
+				const [sensorsData, setSensorsData] = createSignal({});
+				const [loading, setLoading] = createSignal(true);
+				const [errors, setErrors] = createSignal({});
+
+				async function fetchAllSensors() {
+					setLoading(true);
+
+					const newData = {};
+					const newErrors = {};
+
+					for (const sensor of SENSORS) {
+						const data = await fetchSensor(sensor.name);
+
+						if (!data) {
+							newErrors[sensor.name] = `Failed to fetch data for ${sensor}.`;
+							continue;
+						}
+
+						const sensorData = data
+							.split('\n')
+							.filter(line => line.trim())
+							.map(line => Number(line.split('|')[0].trim()));
+
+						if (sensorData.length === 0) {
+							newErrors[sensor.name] = `No data available for ${sensor}.`;
+						} else {
+							newData[sensor.name] = sensorData;
+						}
+					}
+
+					setSensorsData(newData);
+					setErrors(newErrors);
+
+					setLoading(false);
+				}
+
+				onMount(() => {
+					fetchAllSensors();
+
+					setInterval(fetchAllSensors, 30000);
+				});
+
+				return html`
+					<div class="container mx-auto px-4 py-8 max-w-6xl">
+						<h1 class="text-3xl font-bold text-gray-900 mb-6">Sensors at home</h1>
+
+						<div class="mb-8">
+							<p class="text-gray-700 mb-4">
+								This page displays the current values of various sensors in the house.
+							</p>
+						</div>
+
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+							${() =>
+								!loading() &&
+								SENSORS.map(sensor =>
+									SensorCard({
+										...sensor,
+										data: sensorsData()[sensor.name] || [],
+									}),
+								)}
+						</div>
+					</div>
+				`;
+			}
+
+			render(App, document.body);
+		</script>
+	</body>
+</html>

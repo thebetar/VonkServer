@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -52,16 +53,22 @@ char *get_current_ip()
     return ip_str;
 }
 
-char *get_headers(char *message)
+char *get_headers(char *message, char *content_type)
 {
-    static char http_headers[512];
+    // If content_type is empty, default to text/plain
+    if (content_type == NULL || strlen(content_type) == 0)
+    {
+        content_type = "text/plain";
+    }
+
+    static char http_headers[8192]; // Buffer for HTTP headers
     sprintf(http_headers,
             "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/plain\r\n"
+            "Content-Type: %s\r\n"
             "Content-Length: %d\r\n"
             "\r\n"
             "%s",
-            (int)strlen(message), message);
+            content_type, (int)strlen(message), message);
     return http_headers;
 }
 
@@ -152,20 +159,58 @@ void send_data(int client_socket, struct client_request_data request_data)
         // If there is a slash, return an error message
         message = "STATUS: Slash is not allowed in URL";
         printf("Error: %s\n", message);
-        send(client_socket, get_headers(message), strlen(get_headers(message)), 0);
+        send(client_socket, get_headers(message, "text/plain"), strlen(get_headers(message, "text/plain")), 0);
+        return;
+    }
+
+    // Check specific sensors URL for showing HTML page
+    if (strcmp(request_data.url, "sensors") == 0)
+    {
+        FILE *file = fopen("templates/index.html", "r");
+
+        if (file == NULL)
+        {
+            message = "STATUS: Could not open index.html";
+            printf("Error: %s\n", message);
+            send(client_socket, get_headers(message, "text/plain"), strlen(get_headers(message, "text/plain")), 0);
+            return;
+        }
+
+        fseek(file, 0, SEEK_END);
+        int file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        // Read the file content
+        char *file_content = malloc(file_size + 1);
+
+        if (file_content == NULL)
+        {
+            message = "STATUS: Memory allocation failed";
+            printf("Error: %s\n", message);
+            fclose(file);
+            send(client_socket, get_headers(message, "text/plain"), strlen(get_headers(message, "text/plain")), 0);
+            return;
+        }
+
+        int bytes_read = fread(file_content, 1, file_size, file);
+        file_content[bytes_read] = '\0';
+        fclose(file);
+
+        send(client_socket, get_headers(file_content, "text/html"), strlen(get_headers(file_content, "text/html")), 0);
+
+        free(file_content);
         return;
     }
 
     // Check if temperature or humidity
     if (
-        strcmp(request_data.url, "temperature") != 0 && 
-        strcmp(request_data.url, "humidity") != 0 && 
-        strcmp(request_data.url, "light") != 0
-    )
+        strcmp(request_data.url, "temperature") != 0 &&
+        strcmp(request_data.url, "humidity") != 0 &&
+        strcmp(request_data.url, "light") != 0)
     {
         message = "STATUS: Invalid URL";
         printf("Error: %s\n", message);
-        send(client_socket, get_headers(message), strlen(get_headers(message)), 0);
+        send(client_socket, get_headers(message, "text/plain"), strlen(get_headers(message, "text/plain")), 0);
         return;
     }
 
@@ -188,7 +233,7 @@ void send_data(int client_socket, struct client_request_data request_data)
     }
 
     // Prepare HTTP headers with the message
-    char *headers = get_headers(message);
+    char *headers = get_headers(message, "text/plain");
 
     if (send(client_socket, headers, strlen(headers), 0) < 0)
     {
