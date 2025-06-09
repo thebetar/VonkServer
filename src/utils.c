@@ -8,8 +8,8 @@
 #include "database.h"
 #include "utils.h"
 
-#define MAX_REQUEST_SIZE 2048   // Maximum size for incoming HTTP request
-#define MAX_RESPONSE_SIZE 65536 // Maximum size for HTTP response
+#define MAX_REQUEST_SIZE 2048     // Maximum size for incoming HTTP request (2KiB)
+#define MAX_RESPONSE_SIZE 1048576 // Maximum size for HTTP response (1MiB)
 
 char *get_current_ip()
 {
