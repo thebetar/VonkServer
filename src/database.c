@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 FILE *open_file(const char *collection_name, const char *mode)
 {
@@ -80,11 +81,16 @@ char *post_data(char *collection_name, char *data)
         return "STATUS: Collection not found";
     }
 
-    // Push newline character to data
-    if (data[strlen(data) - 1] != '\n')
-    {
-        strcat(data, "\n");
-    }
+    // Push date ISO string to data
+    time_t now = time(NULL);
+    struct tm *tm_info = localtime(&now);
+    char date_str[20];
+    strftime(date_str, sizeof(date_str), "%Y-%m-%dT%H:%M:%S", tm_info);
+    strcat(data, " | ");
+    strcat(data, date_str);
+
+    // Append newline character to data
+    strcat(data, "\n");
 
     // Get current data from file
     char *curRows = get_data(collection_name);
@@ -108,39 +114,22 @@ char *post_data(char *collection_name, char *data)
     return "STATUS: Data written successfully";
 }
 
-char *delete_data(char *collection_name, char *data)
+char *delete_data(char *collection_name)
 {
-    // Read current data from file
-    char *curRows = get_data(collection_name);
-
-    // Check if data exists in current data
-    if (strstr(curRows, data) == NULL)
-    {
-        return "STATUS: Data not found";
-    }
-
     // Open file for writing
-    FILE *file = fopen("data.txt", "w");
+    FILE *file = open_file(collection_name, "w");
     if (file == NULL)
     {
         perror("Could not open data.txt for writing");
         return "STATUS: Error writing data";
     }
 
-    // Write all lines except the one to delete
-    char *line = strtok(curRows, "\n");
-
-    // Loop through line until the end of the string
-    while (line != NULL)
+    // Write empty file
+    if (fputs("", file) == EOF)
     {
-        if (strcmp(line, data) != 0)
-        {
-            fputs(line, file);
-            fputs("\n", file);
-        }
-
-        // Pass NULL to get the next token in the string
-        line = strtok(NULL, "\n");
+        perror("Could not write to data.txt");
+        fclose(file);
+        return "STATUS: Error writing data";
     }
 
     fclose(file);
