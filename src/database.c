@@ -28,7 +28,7 @@ FILE *open_file(const char *collection_name, const char *mode)
 char *get_data(char *collection_name)
 {
     // Read data from data.txt
-    static char data[4096]; // Buffer to hold the data
+    static char data[1048576]; // Buffer to hold the data
 
     FILE *file = open_file(collection_name, "r");
 
