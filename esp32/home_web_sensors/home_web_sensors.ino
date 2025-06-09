@@ -134,5 +134,5 @@ void loop()
   }
 
   // Send current data every minute
-  delay(2000);
+  delay(60000);
 }
