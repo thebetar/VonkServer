@@ -73,7 +73,7 @@ char *post_data(char *collection_name, char *data)
     }
 
     // Write data to data.txt
-    FILE *file = open_file(collection_name, "a");
+    FILE *file = open_file(collection_name, "a+");
 
     if (file == NULL)
     {
