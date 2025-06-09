@@ -137,7 +137,8 @@
 						const sensorData = data
 							.split('\n')
 							.filter(line => line.trim())
-							.map(line => Number(line.split('|')[0].trim()));
+							.map(line => Number(line.split('|')[0].trim()))
+							.filter(value => !isNaN(value));
 
 						if (sensorData.length === 0) {
 							newErrors[sensor.name] = `No data available for ${sensor}.`;
