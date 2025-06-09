@@ -8,6 +8,9 @@
 #include "database.h"
 #include "utils.h"
 
+#define MAX_REQUEST_SIZE 2048   // Maximum size for incoming HTTP request
+#define MAX_RESPONSE_SIZE 65536 // Maximum size for HTTP response
+
 char *get_current_ip()
 {
     static char ip_str[INET_ADDRSTRLEN];
@@ -61,7 +64,16 @@ char *get_headers(char *message, char *content_type)
         content_type = "text/plain";
     }
 
-    static char http_headers[8192]; // Buffer for HTTP headers
+    // Allocate 64KB for HTTP and content
+    static char http_headers[MAX_RESPONSE_SIZE];
+
+    // Check if content will be too large
+    if (strlen(message) > MAX_RESPONSE_SIZE - 256)
+    {
+        fprintf(stderr, "Error: Message too large for HTTP response\n");
+        return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    }
+
     sprintf(http_headers,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: %s\r\n"
@@ -69,12 +81,13 @@ char *get_headers(char *message, char *content_type)
             "\r\n"
             "%s",
             content_type, (int)strlen(message), message);
+
     return http_headers;
 }
 
 struct client_request_data receive_data(int client_socket)
 {
-    char request_buffer[1024];
+    char request_buffer[MAX_REQUEST_SIZE];
     // Receive data (MSG_WAITALL ensures we wait for all data since some clients send headers and body separately)
     int bytes_received = recv(client_socket, request_buffer, sizeof(request_buffer) - 1, 0);
 
