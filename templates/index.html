@@ -17,14 +17,17 @@
 				{
 					name: 'temperature',
 					color: 'rgb(255, 99, 132)',
+					unit: '°C',
 				},
 				{
 					name: 'humidity',
 					color: 'rgb(54, 162, 235)',
+					unit: '%',
 				},
 				{
 					name: 'light',
 					color: 'rgb(255, 206, 86)',
+					unit: 'lux',
 				},
 			];
 
@@ -43,6 +46,18 @@
 				}
 			}
 
+			function parseDateString(dateString) {
+				const date = new Date(dateString);
+
+				// Parse to day month and time
+				return date.toLocaleDateString('nl-NL', {
+					day: '2-digit',
+					month: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit',
+				});
+			}
+
 			function SensorCard(props) {
 				let canvasRef;
 				let chartInstance;
@@ -53,7 +68,7 @@
 					}
 
 					const ctx = canvasRef.getContext('2d');
-					const labels = props.data.map((_, index) => index + 1);
+					const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
 
 					chartInstance = new Chart(ctx, {
 						type: 'line',
@@ -62,7 +77,7 @@
 							datasets: [
 								{
 									label: props.name,
-									data: props.data,
+									data: props.data.map(value => value[0] || 0),
 									borderColor: props.color,
 									backgroundColor: props.color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
 									tension: 0.1,
@@ -76,6 +91,19 @@
 									display: true,
 									text: `Latest ${props.name.charAt(0).toUpperCase() + props.name.slice(1)} Data`,
 								},
+								legend: {
+									display: false,
+								},
+							},
+							scales: {
+								y: {
+									title: {
+										display: true,
+										text: `${props.name.charAt(0).toUpperCase() + props.name.slice(1)} (${
+											props.unit
+										})`,
+									},
+								},
 							},
 						},
 					});
@@ -86,21 +114,21 @@
 						return;
 					}
 
-					const labels = props.data.map((_, index) => index + 1);
+					const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
 					chartInstance.data.labels = labels;
-					chartInstance.data.datasets[0].data = props.data;
+					chartInstance.data.datasets[0].data = props.data.map(value => value[0] || 0);
 					chartInstance.update();
 				});
 
 				return html`
-					<div class="bg-white rounded-lg shadow-md p-4">
+					<div class="bg-white rounded-lg shadow-md pt-4 px-4 pb-2">
 						<h3 class="text-lg font-semibold text-gray-800">
 							${props.name.charAt(0).toUpperCase() + props.name.slice(1)}
 						</h3>
-						<div class="p-4">
+						<div class="mt-4">
 							${props.data.length > 0
 								? html`<canvas ref=${el => (canvasRef = el)}></canvas>
-										<p class="text-gray-500 text-sm mt-2">
+										<p class="text-gray-500 text-sm mt-6 italic text-center text-xs">
 											Last updated: ${new Date().toISOString()}
 										</p>`
 								: html`
@@ -135,8 +163,7 @@
 						const sensorData = data
 							.split('\n')
 							.filter(line => line.trim())
-							.map(line => Number(line.split('|')[0].trim()))
-							.filter(value => !isNaN(value));
+							.map(line => line.split('|').map(value => value.trim()));
 
 						if (sensorData.length === 0) {
 							newErrors[sensor.name] = `No data available for ${sensor}.`;
@@ -154,7 +181,8 @@
 				onMount(() => {
 					fetchAllSensors();
 
-					setInterval(fetchAllSensors, 30000);
+					// Refresh data every 15 minutes
+					setInterval(fetchAllSensors, 15 * 60 * 1000);
 				});
 
 				return html`
