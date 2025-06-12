@@ -196,7 +196,7 @@ void send_data(int client_socket, struct client_request_data request_data)
             {
                 printf("Temperature is higher than 27 degrees, turning on tapo fan\n");
 
-                if (tapo_fan_toggle(0) != 0)
+                if (tapo_fan_toggle(1) != 0)
                 {
                     message = "STATUS: Failed to turn on tapo fan";
                     printf("Error: %s\n", message);
@@ -204,7 +204,7 @@ void send_data(int client_socket, struct client_request_data request_data)
             }
             else
             {
-                if (tapo_fan_toggle(1) != 0)
+                if (tapo_fan_toggle(0) != 0)
                 {
                     message = "STATUS: Failed to turn off tapo fan";
                     printf("Error: %s\n", message);

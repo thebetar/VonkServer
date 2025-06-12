@@ -20,10 +20,7 @@ def switch_tapo_plug(turn_on=True):
         p100 = PyP100.P100(
             TAPO_IP, TAPO_EMAIL, TAPO_PASSWORD
         )  # Initialize the Tapo plug with IP, email, and password
-        print("Initializing Tapo plug with provided credentials...")
-
         p100.handshake()  # Creates the cookies required for further methods
-        print("Handshake successful. Cookies created.")
         p100.login()  # Sends credentials to the plug and creates AES Key and IV for further methods
 
         if turn_on:
