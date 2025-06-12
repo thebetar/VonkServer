@@ -188,28 +188,18 @@ void send_data(int client_socket, struct client_request_data request_data)
     {
         message = post_data(request_data.url, request_data.body);
 
-        // If temperature is higher than 27 degrees, call tapo fan
+        // If temperature handle it
         if (strcmp(request_data.url, "temperature") == 0)
         {
             int temperature = atoi(request_data.body);
-            if (temperature > 25)
-            {
-                printf("Temperature is higher than 27 degrees, turning on tapo fan\n");
+            handle_temperature(temperature);
+        }
 
-                if (tapo_fan_toggle(1) != 0)
-                {
-                    message = "STATUS: Failed to turn on tapo fan";
-                    printf("Error: %s\n", message);
-                }
-            }
-            else
-            {
-                if (tapo_fan_toggle(0) != 0)
-                {
-                    message = "STATUS: Failed to turn off tapo fan";
-                    printf("Error: %s\n", message);
-                }
-            }
+        // If humidity handle it
+        if (strcmp(request_data.url, "humidity") == 0)
+        {
+            int humidity = atoi(request_data.body);
+            handle_humidity(humidity);
         }
     }
     else if (strcmp(request_data.method, "DELETE") == 0)

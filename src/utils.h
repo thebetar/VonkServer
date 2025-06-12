@@ -4,4 +4,6 @@ char *get_current_ip();
 
 int start_server();
 
-int tapo_fan_toggle(bool turn_on);
+int handle_humidity(int humidity);
+int handle_temperature(int temperature);
+int tapo_toggle(char *type, bool turn_on);

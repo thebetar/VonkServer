@@ -93,10 +93,68 @@ int start_server()
     return server_socket;
 }
 
-int tapo_fan_toggle(bool turn_on)
+int handle_temperature(int temperature)
 {
-    // Call python script at "src/switch_tapo_plug.py" with argument "off" or "on"
-    const char *command = turn_on ? "python3 src/switch_tapo_plug.py on" : "python3 src/switch_tapo_plug.py off";
+    // Check if temperature is higher than 25 degrees
+    if (temperature > 25)
+    {
+        printf("Temperature is higher than 25 degrees, turning on Tapo fan\n");
+        return tapo_toggle("temperature", true); // Turn on the fan
+    }
+    else
+    {
+        printf("Temperature is lower than or equal to 25 degrees, turning off Tapo fan\n");
+        return tapo_toggle("temperature", false); // Turn off the fan
+    }
+}
+
+int handle_humidity(int humidity)
+{
+    // Check if humidity is higher than 60%
+    if (humidity > 60)
+    {
+        printf("Humidity is higher than 60%%, turning on Tapo fan\n");
+        return tapo_toggle("humidity", true); // Turn on the humidifier
+    }
+    else
+    {
+        printf("Humidity is lower than or equal to 60%%, turning off Tapo fan\n");
+        return tapo_toggle("humidity", false); // Turn off the humidifier
+    }
+}
+
+int tapo_toggle(char *type, bool turn_on)
+{
+    const char command[256];
+
+    if (strcmp(type, "temperature") == 0)
+    {
+        if (turn_on)
+        {
+            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug temp on");
+        }
+        else
+        {
+            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug temp off");
+        }
+    }
+    else if (strcmp(type, "humidity") == 0)
+    {
+        if (turn_on)
+        {
+            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug hum on");
+        }
+        else
+        {
+            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug hum off");
+        }
+    }
+    else
+    {
+        fprintf(stderr, "Invalid type for Tapo toggle: %s\n", type);
+        return 1; // Return 1 for failure
+    }
+
     int result = system(command);
 
     if (result == 0)
