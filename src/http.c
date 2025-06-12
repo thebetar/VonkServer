@@ -9,8 +9,8 @@
 #include "http.h"
 #include "utils.h"
 
-#define MAX_REQUEST_SIZE 2048     // Maximum size for incoming HTTP request (2KiB)
-#define MAX_RESPONSE_SIZE 1048576 // Maximum size for HTTP response (1MiB)
+#define MAX_REQUEST_SIZE 2048           // Maximum size for incoming HTTP request (2KiB)
+#define MAX_RESPONSE_SIZE 1048576 * 2   // Maximum size for HTTP response (2MiB)
 
 char *get_headers(char *message, char *content_type)
 {

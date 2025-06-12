@@ -130,22 +130,22 @@ int tapo_toggle(char *type, bool turn_on)
     {
         if (turn_on)
         {
-            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug temp on");
+            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug.py temp on");
         }
         else
         {
-            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug temp off");
+            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug.py temp off");
         }
     }
     else if (strcmp(type, "humidity") == 0)
     {
         if (turn_on)
         {
-            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug hum on");
+            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug.py hum on");
         }
         else
         {
-            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug hum off");
+            snprintf(command, sizeof(command), "python3 src/switch_tapo_plug.py hum off");
         }
     }
     else
