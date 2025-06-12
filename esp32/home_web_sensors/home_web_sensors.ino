@@ -30,6 +30,9 @@ DHT dht(DHTPIN, DHTTYPE);
 
 const char *server_url = "http://192.168.0.234:8080";
 
+#define SLEEP_TIME_MINUTES 30  // Sleep time in minutesq
+#define uS_TO_S_FACTOR 1000000 // Conversion factor for microseconds
+
 void connect_to_wifi()
 {
   WiFi.mode(WIFI_STA);
@@ -122,7 +125,7 @@ void loop()
 
   // --- Send Temperature to Server ---
   if (WiFi.status() == WL_CONNECTED)
-  { 
+  {
     // Send data
     send_data("/humidity", h);
     send_data("/temperature", t);
@@ -133,6 +136,12 @@ void loop()
     Serial.println("WiFi not connected, skipping data upload.");
   }
 
-  // Send current data every 30 minutes
-  delay(30 * 60 * 1000);
+  // Set deepsleep timer for 30 minutes
+  Serial.println("Going to sleep for 30 minutes...");
+  Serial.flush();
+
+  esp_sleep_enable_timer_wakeup(SLEEP_TIME_MINUTES * 60 * uS_TO_S_FACTOR); // Set wakeup time in microseconds
+  esp_deep_sleep_start();                                                  // Start deep sleep
+
+  // The ESP32 will reset and start from the beginning of setup after waking up
 }

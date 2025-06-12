@@ -1,3 +1,5 @@
+.venv
+
 main
 data/*.txt
 !data/data.txt
