@@ -1,4 +1,5 @@
 from PyP100 import PyP100
+import sys
 
 # --- Tapo Device Configuration ---
 TAPO_IP = "192.168.0.214"  # Replace with your Tapo device's IP address
@@ -37,3 +38,20 @@ def switch_tapo_plug(turn_on=True):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python switch_tapo_plug.py <on/off>")
+        sys.exit(1)
+
+    action = sys.argv[1].lower()
+    if action == "on":
+        result = switch_tapo_plug(turn_on=True)
+    elif action == "off":
+        result = switch_tapo_plug(turn_on=False)
+    else:
+        print("Invalid argument. Use 'on' or 'off'.")
+        sys.exit(1)
+
+    print(result)

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -90,4 +91,22 @@ int start_server()
     printf("Server IP: %s:%d\n", get_current_ip(), PORT);
 
     return server_socket;
+}
+
+int tapo_fan_toggle(bool turn_on)
+{
+    // Call python script at "src/switch_tapo_plug.py" with argument "off" or "on"
+    const char *command = turn_on ? "python3 src/switch_tapo_plug.py on" : "python3 src/switch_tapo_plug.py off";
+    int result = system(command);
+
+    if (result == 0)
+    {
+        printf("Tapo fan turned %s\n", turn_on ? "ON" : "OFF");
+        return 0; // Return 0 for success
+    }
+    else
+    {
+        fprintf(stderr, "Failed to turn %s Tapo fan\n", turn_on ? "on" : "off");
+        return 1; // Return 1 for failure
+    }
 }

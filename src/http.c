@@ -7,6 +7,7 @@
 
 #include "database.h"
 #include "http.h"
+#include "utils.h"
 
 #define MAX_REQUEST_SIZE 2048     // Maximum size for incoming HTTP request (2KiB)
 #define MAX_RESPONSE_SIZE 1048576 // Maximum size for HTTP response (1MiB)
@@ -186,6 +187,30 @@ void send_data(int client_socket, struct client_request_data request_data)
     if (strcmp(request_data.method, "POST") == 0)
     {
         message = post_data(request_data.url, request_data.body);
+
+        // If temperature is higher than 27 degrees, call tapo fan
+        if (strcmp(request_data.url, "temperature") == 0)
+        {
+            int temperature = atoi(request_data.body);
+            if (temperature > 27)
+            {
+                printf("Temperature is higher than 27 degrees, turning on tapo fan\n");
+
+                if (tapo_fan_toggle(0) != 0)
+                {
+                    message = "STATUS: Failed to turn on tapo fan";
+                    printf("Error: %s\n", message);
+                }
+            }
+            else
+            {
+                if (tapo_fan_toggle(1) != 0)
+                {
+                    message = "STATUS: Failed to turn off tapo fan";
+                    printf("Error: %s\n", message);
+                }
+            }
+        }
     }
     else if (strcmp(request_data.method, "DELETE") == 0)
     {
