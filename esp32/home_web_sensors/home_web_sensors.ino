@@ -4,7 +4,7 @@
   Reads temperature and humidity from a DHT sensor and displays it on an Adafruit SSD1306 OLED screen.
   Also includes the existing LED control based on humidity.
 */
-
+#include <stdbool.h>
 #include <string.h>
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
@@ -30,7 +30,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 const char *server_url = "http://192.168.0.234:8080";
 
-#define SLEEP_TIME_MINUTES 30  // Sleep time in minutesq
+#define SLEEP_TIME_MINUTES 10  // Sleep time in minutes
 #define uS_TO_S_FACTOR 1000000 // Conversion factor for microseconds
 
 void connect_to_wifi()
@@ -62,36 +62,44 @@ void setup()
 void send_data(char *path, float value)
 {
   static char full_url[128];
-
-  // Parse URL and start request
-  HTTPClient http;
   sprintf(full_url, "%s%s", server_url, path);
-  http.begin(full_url);
-
-  // Add basic header
-  http.addHeader("Content-Type", "text/plain");
 
   // Parse data to be send to string
   char postData[16];
   sprintf(postData, "%.2f", value);
 
-  Serial.printf("[HTTP] POST sending data %s\n", postData);
+  int attempt = 0;
+  bool success = false;
 
-  // Send request
-  int httpResponseCode = http.POST(postData);
+  while (attempt < 3 && !success) {
 
-  // Check result
-  if (httpResponseCode > 0)
-  {
-    Serial.printf("[HTTP] POST... code: %d\n", httpResponseCode);
-    String response = http.getString();
-    Serial.println(response);
+    // Parse URL and start request
+    HTTPClient http;
+    http.begin(full_url);
+
+    // Add basic header
+    http.addHeader("Content-Type", "text/plain");
+
+    Serial.printf("[HTTP] POST sending data %s\n", postData);
+
+    // Send request
+    int httpResponseCode = http.POST(postData);
+
+    // Check result
+    if (httpResponseCode >= 200 && httpResponseCode < 300)
+    {
+      Serial.printf("[HTTP] POST... code: %d\n", httpResponseCode);
+      String response = http.getString();
+      Serial.println(response);
+      success = true;
+    }
+    else
+    {
+      Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpResponseCode).c_str());
+      delay(2000);
+    }
+    http.end();
   }
-  else
-  {
-    Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpResponseCode).c_str());
-  }
-  http.end();
 }
 
 void loop()
@@ -136,8 +144,8 @@ void loop()
     Serial.println("WiFi not connected, skipping data upload.");
   }
 
-  // Set deepsleep timer for 30 minutes
-  Serial.println("Going to sleep for 30 minutes...");
+  // Set deepsleep timer for 10 minutes
+  Serial.println("Going to sleep for 10 minutes...");
   Serial.flush();
 
   esp_sleep_enable_timer_wakeup(SLEEP_TIME_MINUTES * 60 * uS_TO_S_FACTOR); // Set wakeup time in microseconds

@@ -192,7 +192,7 @@ void send_data(int client_socket, struct client_request_data request_data)
         if (strcmp(request_data.url, "temperature") == 0)
         {
             int temperature = atoi(request_data.body);
-            if (temperature > 27)
+            if (temperature > 25)
             {
                 printf("Temperature is higher than 27 degrees, turning on tapo fan\n");
 
