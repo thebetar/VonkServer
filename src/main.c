@@ -12,6 +12,12 @@ int main()
     int client_socket;
     int server_socket = start_server();
 
+    if (server_socket < 0)
+    {
+        fprintf(stderr, "Failed to start server\n");
+        return 1; // Exit if server could not be started
+    }
+
     while (1)
     {
         // Accept a new connection

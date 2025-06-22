@@ -73,7 +73,16 @@ struct client_request_data receive_data(int client_socket)
     strcpy(result.url, url);
     printf("URL: %s\n", url);
 
-    if (strcmp(method, "POST") != 0)
+    char authorization[256];
+    // Check for Authorization header
+    if (strstr(request_buffer, "Authorization:") != NULL)
+    {
+        // Extract the Authorization header
+        sscanf(strstr(request_buffer, "Authorization:") + 15, "%255s", authorization);
+        printf("Authorization: %s\n", authorization);
+    }
+
+    if (strcmp(method, "POST") != 0 && strcmp(method, "PUT") != 0)
     {
         // If the method is not POST, we don't expect a body
         result.body[0] = '\0';
@@ -121,6 +130,8 @@ void send_data(int client_socket, struct client_request_data request_data)
     {
         memmove(request_data.url, request_data.url + 1, strlen(request_data.url));
     }
+
+    printf("Processing request for URL: %s\n", request_data.url);
 
     // Check if there is still a slash left
     if (strchr(request_data.url, '/') != NULL)
@@ -175,11 +186,13 @@ void send_data(int client_socket, struct client_request_data request_data)
     if (
         strcmp(request_data.url, "temperature") != 0 &&
         strcmp(request_data.url, "humidity") != 0 &&
-        strcmp(request_data.url, "light") != 0)
+        strcmp(request_data.url, "light") != 0 &&
+        strcmp(request_data.url, "air_quality") != 0)
     {
         message = "STATUS: Invalid URL";
         printf("Error: %s\n", message);
-        send(client_socket, get_headers(message, "text/plain"), strlen(get_headers(message, "text/plain")), 0);
+        char *hearders = get_headers(message, "text/plain");
+        send(client_socket, hearders, strlen(hearders), 0);
         return;
     }
 

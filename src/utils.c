@@ -60,11 +60,12 @@ int start_server()
 {
     struct sockaddr_in server_address;
     int server_socket;
+
     // Create socket
     if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         perror("Socket creation failed");
-        return 1;
+        return -1;
     }
 
     server_address.sin_family = AF_INET;
@@ -75,14 +76,14 @@ int start_server()
     if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
     {
         perror("Bind failed");
-        return 1;
+        return -1;
     }
 
     // Start listening for incoming connections
     if (listen(server_socket, BACKLOG) < 0)
     {
         perror("Listen failed");
-        return 1;
+        return -1;
     }
 
     printf("Server started successfully!\n\n");
@@ -95,37 +96,35 @@ int start_server()
 
 int handle_temperature(int temperature)
 {
-    // Check if temperature is higher than 25 degrees
     if (temperature > 25)
     {
         printf("Temperature is higher than 25 degrees, turning on Tapo fan\n");
-        return tapo_toggle("temperature", true); // Turn on the fan
+        return tapo_toggle("temperature", true);
     }
     else
     {
         printf("Temperature is lower than or equal to 25 degrees, turning off Tapo fan\n");
-        return tapo_toggle("temperature", false); // Turn off the fan
+        return tapo_toggle("temperature", false);
     }
 }
 
 int handle_humidity(int humidity)
 {
-    // Check if humidity is higher than 60%
-    if (humidity > 60)
+    if (humidity <= 40)
     {
-        printf("Humidity is higher than 60%%, turning on Tapo fan\n");
-        return tapo_toggle("humidity", true); // Turn on the humidifier
+        printf("Humidity is lower than 40%%, turning on Tapo humidity\n");
+        return tapo_toggle("humidity", true);
     }
     else
     {
-        printf("Humidity is lower than or equal to 60%%, turning off Tapo fan\n");
+        printf("Humidity is higher than 40%%, turning off Tapo humidity\n");
         return tapo_toggle("humidity", false); // Turn off the humidifier
     }
 }
 
 int tapo_toggle(char *type, bool turn_on)
 {
-    const char command[256];
+    char command[256];
 
     if (strcmp(type, "temperature") == 0)
     {

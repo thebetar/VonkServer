@@ -7,3 +7,10 @@ The goals of the project are:
 -   Create a basic webserver that can handle HTTP requests
 -   Create basic CRUD operations
 -   Create data object models
+
+# Todo's
+
+-   Improve Body receiving logic
+-   Add authorisation header
+-   Add extra sensors to ESP32
+-   Add extra sensors to Dashboard

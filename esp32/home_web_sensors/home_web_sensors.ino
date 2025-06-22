@@ -9,29 +9,42 @@
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 
+// --- Setup WiFi ---
+#include "WiFi.h"
+#include <HTTPClient.h>
+
+// --- WiFi credentials
+#define SSID "Housemates.pl"
+#define PASSWORD "8CffkmAu7knz"
+
+// --- LED Define ---
+#define RED_LED_PIN 15
+#define GREEN_LED_PIN 19
+#define YELLOW_LED_PIN 18
+#define BLUE_LED_PIN 21
+
+// --- Lightsensor Define ---
+#define LIGHT_PIN 34 // Has to be ADC ready PIN
+
+// --- Air quality Define
+#define AIR_PIN 35
+
 // --- DHT Sensor Defines ---
 #define DHTPIN 22     // Digital pin connected to the DHT sensor
 #define DHTTYPE DHT22 // DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
 
-// --- Setup WiFi ---
-#include "WiFi.h"
-#include <HTTPClient.h>
-
-// --- LED Define ---
-#define LED_PIN 23 // Onboard LED pin for ESP32
-
-// --- Lightsensor Define ---
-#define LIGHT_PIN 34 // Has to be ADC ready PIN
-
-#define SSID "Housemates.pl"
-#define PASSWORD "8CffkmAu7knz"
-
 const char *server_url = "http://192.168.0.234:8080";
 
-#define SLEEP_TIME_MINUTES 10  // Sleep time in minutes
+#define SLEEP_TIME_MINUTES 20  // Sleep time in minutes
 #define uS_TO_S_FACTOR 1000000 // Conversion factor for microseconds
+
+#define DETECT_TEMPERATURE_VALUE 27
+#define DETECT_HUMIDITY_VALUE 60
+#define DETECT_AIR_QUALITY_VALUE 1000
+
+bool sensorMissread = false;
 
 void connect_to_wifi()
 {
@@ -56,11 +69,21 @@ void setup()
 
   dht.begin(); // Initialize DHT sensor
 
-  pinMode(LED_PIN, OUTPUT); // Initialize LED pin as an output
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(YELLOW_LED_PIN, OUTPUT);
+  pinMode(BLUE_LED_PIN, OUTPUT);
 }
 
 void send_data(char *path, float value)
 {
+  if (isnan(value) || isinf(value))
+  {
+    Serial.printf("NaN value read from sensor %s. \n", path);
+    sensorMissread = true;
+    return;
+  }
+
   static char full_url[128];
   sprintf(full_url, "%s%s", server_url, path);
 
@@ -71,8 +94,8 @@ void send_data(char *path, float value)
   int attempt = 0;
   bool success = false;
 
-  while (attempt < 3 && !success) {
-
+  while (attempt < 3 && !success)
+  {
     // Parse URL and start request
     HTTPClient http;
     http.begin(full_url);
@@ -102,50 +125,96 @@ void send_data(char *path, float value)
   }
 }
 
-void loop()
+void handle_sensors()
 {
   // Reading temperature or humidity takes about 250 milliseconds!
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  int l = analogRead(LIGHT_PIN);
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+  int light = analogRead(LIGHT_PIN);
+  int air_quality = analogRead(AIR_PIN);
 
   // --- Serial Monitor Output ---
   Serial.print("Temp: ");
-  Serial.print(t);
+  Serial.print(temperature);
   Serial.println("C");
 
   Serial.print("Humidity: ");
-  Serial.print(h);
+  Serial.print(humidity);
   Serial.println(" %");
 
   Serial.print("Light value: ");
-  Serial.println(l);
+  Serial.println(light);
 
-  // --- LED Control ---
-  if (h < 35)
-  {
-    digitalWrite(LED_PIN, HIGH); // turn the LED on
-  }
-  else
-  {
-    digitalWrite(LED_PIN, LOW); // turn the LED off
-  }
+  Serial.print("Air quality: ");
+  Serial.println(air_quality);
 
   // --- Send Temperature to Server ---
   if (WiFi.status() == WL_CONNECTED)
   {
     // Send data
-    send_data("/humidity", h);
-    send_data("/temperature", t);
-    send_data("/light", (float)l);
+    send_data("/humidity", humidity);
+    send_data("/temperature", temperature);
+    send_data("/light", (float)light);
+    send_data("/air_quality", (float)air_quality);
   }
   else
   {
     Serial.println("WiFi not connected, skipping data upload.");
   }
 
-  // Set deepsleep timer for 10 minutes
-  Serial.println("Going to sleep for 10 minutes...");
+  int led_on = 0;
+
+  // Light red LED if the temperature is too high
+  if (temperature > DETECT_TEMPERATURE_VALUE)
+  {
+    digitalWrite(RED_LED_PIN, HIGH);
+    Serial.println("Temperature LED turned on");
+    led_on = 1;
+  }
+  else
+  {
+    digitalWrite(RED_LED_PIN, LOW);
+  }
+
+  // Light green LED if the humidity is too low
+  if (humidity < DETECT_HUMIDITY_VALUE)
+  {
+    digitalWrite(GREEN_LED_PIN, HIGH);
+    Serial.println("Humidity LED turned on");
+    led_on = 1;
+  }
+  else
+  {
+    digitalWrite(GREEN_LED_PIN, LOW);
+  }
+
+  // Light yellow LED if the air quality is too low
+  if (air_quality > DETECT_AIR_QUALITY_VALUE)
+  {
+    digitalWrite(YELLOW_LED_PIN, HIGH);
+    Serial.println("Air quality LED turned on");
+    led_on = 1;
+  }
+  else
+  {
+    digitalWrite(YELLOW_LED_PIN, LOW);
+  }
+
+  // If the LEDs are on, add a manual delay of 2 minutes to allow the user to see the LEDs
+  if (led_on)
+  {
+    Serial.println("LEDs are on, waiting for 2 minutes to allow user to see them.");
+    delay(120000);
+  }
+}
+
+void loop()
+{
+  sensorMissread = false;
+
+  handle_sensors();
+
+  Serial.println("Going to sleep for some time...");
   Serial.flush();
 
   esp_sleep_enable_timer_wakeup(SLEEP_TIME_MINUTES * 60 * uS_TO_S_FACTOR); // Set wakeup time in microseconds
