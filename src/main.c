@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <time.h>
 
 #include "./utils.h"
 #include "./http.h"
@@ -28,7 +29,8 @@ int main()
         }
 
         // Display that a client has connected
-        printf("Client connected\n");
+        time_t now = time(NULL);
+        printf("Client connected at %s", ctime(&now));
 
         struct client_request_data data = receive_data(client_socket);
 
