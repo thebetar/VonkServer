@@ -28,6 +28,7 @@
 
 // --- Air quality Define
 #define AIR_PIN 35
+#define CO_PIN 32
 
 // --- DHT Sensor Defines ---
 #define DHTPIN 22     // Digital pin connected to the DHT sensor
@@ -41,10 +42,11 @@ const char *server_url = "http://192.168.0.234:8080";
 #define uS_TO_S_FACTOR 1000000 // Conversion factor for microseconds
 
 #define DETECT_TEMPERATURE_VALUE 27
-#define DETECT_HUMIDITY_VALUE 60
+#define DETECT_HUMIDITY_VALUE 40
 #define DETECT_AIR_QUALITY_VALUE 1000
+#define DETECT_CO_VALUE 1000
 
-bool sensorMissread = false;
+bool sensor_missread = false;
 
 void connect_to_wifi()
 {
@@ -80,7 +82,7 @@ void send_data(char *path, float value)
   if (isnan(value) || isinf(value))
   {
     Serial.printf("NaN value read from sensor %s. \n", path);
-    sensorMissread = true;
+    sensor_missread = true;
     return;
   }
 
@@ -132,6 +134,7 @@ void handle_sensors()
   float temperature = dht.readTemperature();
   int light = analogRead(LIGHT_PIN);
   int air_quality = analogRead(AIR_PIN);
+  int co = analogRead(CO_PIN);
 
   // --- Serial Monitor Output ---
   Serial.print("Temp: ");
@@ -147,6 +150,9 @@ void handle_sensors()
 
   Serial.print("Air quality: ");
   Serial.println(air_quality);
+
+  Serial.print("CO value: ");
+  Serial.println(co);
 
   // --- Send Temperature to Server ---
   if (WiFi.status() == WL_CONNECTED)
@@ -200,6 +206,17 @@ void handle_sensors()
     digitalWrite(YELLOW_LED_PIN, LOW);
   }
 
+  if (co > DETECT_CO_VALUE)
+  {
+    digitalWrite(BLUE_LED_PIN, HIGH);
+    Serial.println("CO LED turned on");
+    led_on = 1;
+  }
+  else
+  {
+    digitalWrite(BLUE_LED_PIN, LOW);
+  }
+
   // If the LEDs are on, add a manual delay of 2 minutes to allow the user to see the LEDs
   if (led_on)
   {
@@ -210,9 +227,18 @@ void handle_sensors()
 
 void loop()
 {
-  sensorMissread = false;
+  sensor_missread = false;
 
   handle_sensors();
+
+  if (sensor_missread)
+  {
+    Serial.println("Sensor missread, skipping sleep.");
+    Serial.flush();
+
+    delay(10000);
+    return;
+  }
 
   Serial.println("Going to sleep for some time...");
   Serial.flush();

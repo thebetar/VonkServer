@@ -187,7 +187,8 @@ void send_data(int client_socket, struct client_request_data request_data)
         strcmp(request_data.url, "temperature") != 0 &&
         strcmp(request_data.url, "humidity") != 0 &&
         strcmp(request_data.url, "light") != 0 &&
-        strcmp(request_data.url, "air_quality") != 0)
+        strcmp(request_data.url, "air_quality") != 0 &&
+        strcmp(request_data.url, "co"))
     {
         message = "STATUS: Invalid URL";
         printf("Error: %s\n", message);
