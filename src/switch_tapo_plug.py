@@ -6,8 +6,6 @@ from PyP100 import PyP100
 # Load environment variables from .env file
 load_dotenv()
 
-print(os.environ.get("TAPO_EMAIL"))
-
 # --- Tapo Device Configuration ---
 TEMP_TAPO_IP = os.getenv("TEMP_TAPO_IP", "")
 HUM_TAPO_IP = os.getenv("HUM_TAPO_IP", "")
