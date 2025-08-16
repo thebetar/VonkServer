@@ -10,7 +10,7 @@
 	<body class="bg-gray-50">
 		<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 		<script type="module">
-			import { onMount, createSignal, createEffect, For } from 'https://esm.sh/solid-js@1.8.1';
+			import { onMount, createSignal, createEffect, For, createMemo } from 'https://esm.sh/solid-js@1.8.1';
 			import { render } from 'https://esm.sh/solid-js@1.8.1/web';
 			import html from 'https://esm.sh/solid-js@1.8.1/html';
 
@@ -49,6 +49,42 @@
 					warning: 'CO levels are too high, evacuate the area immediately.',
 				},
 			];
+
+			// Date range defaults: start = today - 2 years, end = today
+			const today = new Date();
+			const start = new Date(today);
+			start.setFullYear(today.getFullYear() - 2);
+
+			// Date range state
+			const [minDay, setMinDay] = createSignal(start.getDate());
+			const [minMonth, setMinMonth] = createSignal(start.getMonth() + 1);
+			const [minYear, setMinYear] = createSignal(start.getFullYear());
+			const [maxDay, setMaxDay] = createSignal(today.getDate());
+			const [maxMonth, setMaxMonth] = createSignal(today.getMonth() + 1);
+			const [maxYear, setMaxYear] = createSignal(today.getFullYear());
+
+			function toDate(day, month, year, endOfDay = false) {
+				if (![day, month, year].every(n => Number.isFinite(n) && n > 0)) return null;
+				const d = new Date(year, month - 1, day);
+				if (Number.isNaN(d.getTime())) return null;
+				if (endOfDay) d.setHours(23, 59, 59, 999);
+				else d.setHours(0, 0, 0, 0);
+				return d;
+			}
+			const minDate = createMemo(() => toDate(minDay(), minMonth(), minYear(), false));
+			const maxDate = createMemo(() => toDate(maxDay(), maxMonth(), maxYear(), true));
+
+			function filterByRange(list) {
+				const min = minDate();
+				const max = maxDate();
+				if (!min && !max) return list;
+				return list.filter(([, ts]) => {
+					const d = new Date(ts);
+					if (min && d < min) return false;
+					if (max && d > max) return false;
+					return true;
+				});
+			}
 
 			async function fetchSensor(name) {
 				try {
@@ -165,115 +201,38 @@
 				return html`
 					<div class="bg-white rounded-lg shadow-md pt-4 px-4 pb-2">
 						<h3
-							class=${() => `text-lg font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}
+							class=${() =>
+								`text-lg font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}
 						>
 							${props.name.charAt(0).toUpperCase() + props.name.slice(1)}
 						</h3>
 
-						<div class="flex items-center mb-2">
-							<div class="flex-1">
-								<div class="flex items-center">
-									<input
-										name="min_day"
-										type="number"
-										min="0"
-										max="30"
-										value="7"
-										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
-									/>
-									<label for="day" class="text-gray-600 text-sm">days</label>
-								</div>
-								<div class="flex items-center ml-4">
-									<input
-										name="min_month"
-										type="number"
-										min="0"
-										max="12"
-										value="1"
-										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
-									/>
-									<label for="month" class="text-gray-600 text-sm">months</label>
-								</div>
-								<div class="flex items-center ml-4">
-									<input
-										name="min_year"
-										type="number"
-										min="2020"
-										max="2030"
-										value="2023"
-										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
-									/>
-									<label for="year" class="text-gray-600 text-sm">years</label>
-								</div>
-							</div>
-							<div class="flex-1">
-								<div class="flex items-center">
-									<input
-										name="max_day"
-										type="number"
-										min="0"
-										max="30"
-										value="7"
-										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
-									/>
-									<label for="day" class="text-gray-600 text-sm">days</label>
-								</div>
-								<div class="flex items-center ml-4">
-									<input
-										name="max_month"
-										type="number"
-										min="0"
-										max="12"
-										value="1"
-										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
-									/>
-									<label for="month" class="text-gray-600 text-sm">months</label>
-								</div>
-								<div class="flex items-center ml-4">
-									<input
-										name="max_year"
-										type="number"
-										min="2020"
-										max="2030"
-										value="2023"
-										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
-									/>
-									<label for="year" class="text-gray-600 text-sm">years</label>
-								</div>
-							</div>
-						</div>
-
+						<div class="text-center">
 							<p class="text-gray-600 text-sm mb-2">
-								${
-									showWarning()
-										? html` <span class="text-red-500">${props.warning}</span> `
-										: html`
-												<span
-													>Latest value:
-													${props.data.length > 0
-														? props.data[props.data.length - 1][0]
-														: 'N/A'}
-													${props.unit}</span
-												>
-										  `
-								}
+								${showWarning()
+									? html` <span class="text-red-500">${props.warning}</span> `
+									: html`
+											<span
+												>Latest value:
+												${props.data.length > 0 ? props.data[props.data.length - 1][0] : 'N/A'}
+												${props.unit}</span
+											>
+									  `}
 							</p>
 
 							<div class="mt-4">
-								${
-									props.data.length > 0
-										? html`<canvas ref=${el => (canvasRef = el)}></canvas>
-												<p class="text-gray-500 text-sm mt-6 italic text-center text-xs">
-													Last updated: ${new Date().toISOString()}
-												</p>`
-										: html`
-												<div
-													class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
-												>
-													No data available for ${props.name}.
-												</div>
-										  `
-								}
+								${props.data.length > 0
+									? html`<canvas ref=${el => (canvasRef = el)}></canvas>
+											<p class="text-gray-500 text-sm mt-6 italic text-center text-xs">
+												Last updated: ${new Date().toISOString()}
+											</p>`
+									: html`
+											<div
+												class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
+											>
+												No data available for ${props.name}.
+											</div>
+									  `}
 							</div>
 						</div>
 					</div>
@@ -328,10 +287,123 @@
 					<div class="container mx-auto px-4 py-8 max-w-8xl">
 						<h1 class="text-3xl font-bold text-gray-900 mb-6">Sensors at home</h1>
 
-						<div class="mb-8">
+						<div class="mb-4">
 							<p class="text-gray-700 mb-4">
 								This page displays the current values of various sensors in the house.
 							</p>
+						</div>
+
+						<div class="bg-white rounded-lg shadow-md py-3 px-4 mb-4">
+							<h3 class="font-semibold mb-2">
+								${() => (loading() ? 'Loading sensors...' : 'Filter by date range')}
+							</h3>
+
+							<div class="flex">
+								<div class="flex-1">
+									<div class="text-xs text-gray-500 font-medium mb-1">From</div>
+
+									<div class="flex gap-x-2 items-center">
+										<div>
+											<input
+												name="min_day"
+												type="number"
+												min="1"
+												max="31"
+												value=${minDay()}
+												onInput=${e => setMinDay(e.currentTarget.valueAsNumber)}
+												class="border border-gray-300 rounded px-2 py-1 text-sm w-20 mr-2"
+											/>
+											<label for="day" class="text-gray-600 text-sm">days</label>
+										</div>
+										<div>
+											<input
+												name="min_month"
+												type="number"
+												min="1"
+												max="12"
+												value=${minMonth()}
+												onInput=${e => setMinMonth(e.currentTarget.valueAsNumber)}
+												class="border border-gray-300 rounded px-2 py-1 text-sm w-20 mr-2"
+											/>
+											<label for="month" class="text-gray-600 text-sm">months</label>
+										</div>
+										<div>
+											<input
+												name="min_year"
+												type="number"
+												min="2020"
+												max="2030"
+												value=${minYear()}
+												onInput=${e => setMinYear(e.currentTarget.valueAsNumber)}
+												class="border border-gray-300 rounded px-2 py-1 text-sm w-24 mr-2"
+											/>
+											<label for="year" class="text-gray-600 text-sm">years</label>
+										</div>
+									</div>
+								</div>
+								<div class="flex-1">
+									<div class="text-xs text-gray-500 font-medium mb-1">To</div>
+
+									<div class="flex gap-x-2 items-center">
+										<div>
+											<input
+												name="max_day"
+												type="number"
+												min="1"
+												max="31"
+												value=${maxDay()}
+												onInput=${e => setMaxDay(e.currentTarget.valueAsNumber)}
+												class="border border-gray-300 rounded px-2 py-1 text-sm w-20 mr-2"
+											/>
+											<label for="day" class="text-gray-600 text-sm">days</label>
+										</div>
+										<div class="flex items-center mt-2">
+											<input
+												name="max_month"
+												type="number"
+												min="1"
+												max="12"
+												value=${maxMonth()}
+												onInput=${e => setMaxMonth(e.currentTarget.valueAsNumber)}
+												class="border border-gray-300 rounded px-2 py-1 text-sm w-20 mr-2"
+											/>
+											<label for="month" class="text-gray-600 text-sm">months</label>
+										</div>
+										<div class="flex items-center mt-2">
+											<input
+												name="max_year"
+												type="number"
+												min="2020"
+												max="2030"
+												value=${maxYear()}
+												onInput=${e => setMaxYear(e.currentTarget.valueAsNumber)}
+												class="border border-gray-300 rounded px-2 py-1 text-sm w-24 mr-2"
+											/>
+											<label for="year" class="text-gray-600 text-sm">years</label>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="text-sm text-gray-500">
+								${() => {
+									const min = minDate();
+									const max = maxDate();
+									const fmt = d =>
+										d.toLocaleDateString('nl-NL', {
+											day: '2-digit',
+											month: '2-digit',
+											year: 'numeric',
+										});
+									return min && max
+										? `Showing ${fmt(min)} - ${fmt(max)}`
+										: min
+										? `From ${fmt(min)}`
+										: max
+										? `Up to ${fmt(max)}`
+										: 'Showing all data';
+								}}
+							</div>
 						</div>
 
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -340,7 +412,7 @@
 								SENSORS.map(sensor =>
 									SensorCard({
 										...sensor,
-										data: sensorsData()[sensor.name] || [],
+										data: filterByRange(sensorsData()[sensor.name] || []),
 									}),
 								)}
 						</div>
