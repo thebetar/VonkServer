@@ -1,242 +1,330 @@
 <!DOCTYPE html>
 <html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Sensors</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+	</head>
 
-<head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Sensors</title>
-	<script src="https://cdn.tailwindcss.com"></script>
-</head>
+	<body class="bg-gray-50">
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+		<script type="module">
+			import { onMount, createSignal, createEffect, For } from 'https://esm.sh/solid-js@1.8.1';
+			import { render } from 'https://esm.sh/solid-js@1.8.1/web';
+			import html from 'https://esm.sh/solid-js@1.8.1/html';
 
-<body class="bg-gray-50">
-	<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-	<script type="module">
-		import { onMount, createSignal, createEffect, For } from 'https://esm.sh/solid-js@1.8.1';
-		import { render } from 'https://esm.sh/solid-js@1.8.1/web';
-		import html from 'https://esm.sh/solid-js@1.8.1/html';
+			const SENSORS = [
+				{
+					name: 'temperature',
+					color: 'rgb(255, 99, 132)',
+					unit: '°C',
+					maxValue: 26,
+					warning: 'Temperature is too high, turn on a fan or open a window.',
+				},
+				{
+					name: 'humidity',
+					color: 'rgb(54, 162, 235)',
+					unit: '%',
+					minValue: 40,
+					warning: 'Humidity is too low, consider using a humidifier.',
+				},
+				{
+					name: 'light',
+					color: 'rgb(255, 206, 86)',
+					unit: 'lux',
+				},
+				{
+					name: 'air_quality',
+					color: 'rgb(75, 192, 192)',
+					unit: 'AQI',
+					maxValue: 1000,
+					warning: 'Air quality is poor, consider opening a window.',
+				},
+				{
+					name: 'co',
+					color: 'rgb(153, 102, 255)',
+					unit: 'CO index',
+					maxValue: 1000,
+					warning: 'CO levels are too high, evacuate the area immediately.',
+				},
+			];
 
-		const SENSORS = [
-			{
-				name: 'temperature',
-				color: 'rgb(255, 99, 132)',
-				unit: '°C',
-				maxValue: 26,
-				warning: 'Temperature is too high, turn on a fan or open a window.'
-			},
-			{
-				name: 'humidity',
-				color: 'rgb(54, 162, 235)',
-				unit: '%',
-				minValue: 40,
-				warning: 'Humidity is too low, consider using a humidifier.'
-			},
-			{
-				name: 'light',
-				color: 'rgb(255, 206, 86)',
-				unit: 'lux',
-			},
-			{
-				name: 'air_quality',
-				color: 'rgb(75, 192, 192)',
-				unit: 'AQI',
-				maxValue: 1000,
-				warning: 'Air quality is poor, consider opening a window.'
-			},
-			{
-				name: 'co',
-				color: 'rgb(153, 102, 255)',
-				unit: 'CO index',
-				maxValue: 1000,
-				warning: 'CO levels are too high, evacuate the area immediately.'
-			},
-		];
+			async function fetchSensor(name) {
+				try {
+					const response = await fetch(`/${name}`);
 
-		async function fetchSensor(name) {
-			try {
-				const response = await fetch(`/${name}`);
+					if (!response.ok) {
+						throw new Error(`Error fetching sensor ${name}: ${response.statusText}`);
+					}
 
-				if (!response.ok) {
-					throw new Error(`Error fetching sensor ${name}: ${response.statusText}`);
+					return await response.text();
+				} catch (error) {
+					console.error(error);
+					return null;
 				}
-
-				return await response.text();
-			} catch (error) {
-				console.error(error);
-				return null;
 			}
-		}
 
-		function parseDateString(dateString) {
-			const date = new Date(dateString);
+			function parseDateString(dateString) {
+				const date = new Date(dateString);
 
-			// Parse to day month and time
-			return date.toLocaleDateString('nl-NL', {
-				day: '2-digit',
-				month: '2-digit',
-				hour: '2-digit',
-				minute: '2-digit',
-			});
-		}
+				// Parse to day month and time
+				return date.toLocaleDateString('nl-NL', {
+					day: '2-digit',
+					month: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit',
+				});
+			}
 
-		function SensorCard(props) {
-			let canvasRef;
-			let chartInstance;
+			function SensorCard(props) {
+				let canvasRef;
+				let chartInstance;
 
-			onMount(() => {
-				if (!canvasRef || props.data.length === 0) {
-					return;
-				}
+				onMount(() => {
+					if (!canvasRef || props.data.length === 0) {
+						return;
+					}
 
-				const ctx = canvasRef.getContext('2d');
-				const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
+					const ctx = canvasRef.getContext('2d');
+					const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
 
-				chartInstance = new Chart(ctx, {
-					type: 'line',
-					data: {
-						labels: labels,
-						datasets: [
-							{
-								label: props.name,
-								data: props.data.map(value => value[0] || 0),
-								borderColor: props.color,
-								backgroundColor: props.color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
-								tension: 0.1,
-							},
-						],
-					},
-					options: {
-						responsive: true,
-						plugins: {
-							title: {
-								display: true,
-								text: `Latest ${props.name.charAt(0).toUpperCase() + props.name.slice(1)} Data`,
-							},
-							legend: {
-								display: false,
-							},
+					chartInstance = new Chart(ctx, {
+						type: 'line',
+						data: {
+							labels: labels,
+							datasets: [
+								{
+									label: props.name,
+									data: props.data.map(value => value[0] || 0),
+									borderColor: props.color,
+									backgroundColor: props.color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
+									tension: 0.1,
+								},
+							],
 						},
-						scales: {
-							y: {
+						options: {
+							responsive: true,
+							plugins: {
 								title: {
 									display: true,
-									text: `${props.name.charAt(0).toUpperCase() + props.name.slice(1)} (${props.unit
-										})`,
-								}
+									text: `Latest ${props.name.charAt(0).toUpperCase() + props.name.slice(1)} Data`,
+								},
+								legend: {
+									display: false,
+								},
 							},
-							x: {
-								ticks: {
-									font: {
-										size: 10
-									}
-								}
-							}
+							scales: {
+								y: {
+									title: {
+										display: true,
+										text: `${props.name.charAt(0).toUpperCase() + props.name.slice(1)} (${
+											props.unit
+										})`,
+									},
+								},
+								x: {
+									ticks: {
+										font: {
+											size: 10,
+										},
+									},
+								},
+							},
 						},
-					},
+					});
 				});
-			});
 
-			createEffect(() => {
-				if (!chartInstance || props.data.length == 0) {
-					return;
+				createEffect(() => {
+					if (!chartInstance || props.data.length == 0) {
+						return;
+					}
+
+					const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
+					chartInstance.data.labels = labels;
+					chartInstance.data.datasets[0].data = props.data.map(value => value[0] || 0);
+					chartInstance.update();
+				});
+
+				function showWarning() {
+					if (props.minValue && props.data.length > 0) {
+						const latestValue = props.data[props.data.length - 1]?.[0];
+						if (latestValue < props.minValue) {
+							return true;
+						}
+					} else if (props.maxValue && props.data.length > 0) {
+						const latestValue = props.data[props.data.length - 1]?.[0];
+						if (latestValue > props.maxValue) {
+							return true;
+						}
+					}
+
+					return false;
 				}
 
-				const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
-				chartInstance.data.labels = labels;
-				chartInstance.data.datasets[0].data = props.data.map(value => value[0] || 0);
-				chartInstance.update();
-			});
-
-			function showWarning() {
-				if (props.minValue && props.data.length > 0) {
-					const latestValue = props.data[props.data.length - 1]?.[0];
-					if (latestValue < props.minValue) {
-						return true;
-					}
-				} else if (props.maxValue && props.data.length > 0) {
-					const latestValue = props.data[props.data.length - 1]?.[0];
-					if (latestValue > props.maxValue) {
-						return true;
-					}
-				}
-
-				return false;
-			}
-
-			return html`
+				return html`
 					<div class="bg-white rounded-lg shadow-md pt-4 px-4 pb-2">
-						<h3 class=${() => `text-lg font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}>
+						<h3
+							class=${() => `text-lg font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}
+						>
 							${props.name.charAt(0).toUpperCase() + props.name.slice(1)}
 						</h3>
 
-						<p class="text-gray-600 text-sm mb-2">
-							${showWarning() ? html`
-									<span class="text-red-500">${props.warning}</span>
-								` : html`
-									<span>Latest value: ${props.data.length > 0 ? props.data[props.data.length - 1][0] : 'N/A'} ${props.unit}</span>
-								`}
-						</p>
+						<div class="flex items-center mb-2">
+							<div class="flex-1">
+								<div class="flex items-center">
+									<input
+										name="min_day"
+										type="number"
+										min="0"
+										max="30"
+										value="7"
+										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
+									/>
+									<label for="day" class="text-gray-600 text-sm">days</label>
+								</div>
+								<div class="flex items-center ml-4">
+									<input
+										name="min_month"
+										type="number"
+										min="0"
+										max="12"
+										value="1"
+										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
+									/>
+									<label for="month" class="text-gray-600 text-sm">months</label>
+								</div>
+								<div class="flex items-center ml-4">
+									<input
+										name="min_year"
+										type="number"
+										min="2020"
+										max="2030"
+										value="2023"
+										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
+									/>
+									<label for="year" class="text-gray-600 text-sm">years</label>
+								</div>
+							</div>
+							<div class="flex-1">
+								<div class="flex items-center">
+									<input
+										name="max_day"
+										type="number"
+										min="0"
+										max="30"
+										value="7"
+										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
+									/>
+									<label for="day" class="text-gray-600 text-sm">days</label>
+								</div>
+								<div class="flex items-center ml-4">
+									<input
+										name="max_month"
+										type="number"
+										min="0"
+										max="12"
+										value="1"
+										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
+									/>
+									<label for="month" class="text-gray-600 text-sm">months</label>
+								</div>
+								<div class="flex items-center ml-4">
+									<input
+										name="max_year"
+										type="number"
+										min="2020"
+										max="2030"
+										value="2023"
+										class="border border-gray-300 rounded px-2 py-1 text-sm w-16 mr-2"
+									/>
+									<label for="year" class="text-gray-600 text-sm">years</label>
+								</div>
+							</div>
+						</div>
 
-						<div class="mt-4">
-							${props.data.length > 0
-					? html`<canvas ref=${el => (canvasRef = el)}></canvas>
-										<p class="text-gray-500 text-sm mt-6 italic text-center text-xs">
-											Last updated: ${new Date().toISOString()}
-										</p>`
-					: html`
-										<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-											No data available for ${props.name}.
-										</div>
-								  `}
+							<p class="text-gray-600 text-sm mb-2">
+								${
+									showWarning()
+										? html` <span class="text-red-500">${props.warning}</span> `
+										: html`
+												<span
+													>Latest value:
+													${props.data.length > 0
+														? props.data[props.data.length - 1][0]
+														: 'N/A'}
+													${props.unit}</span
+												>
+										  `
+								}
+							</p>
+
+							<div class="mt-4">
+								${
+									props.data.length > 0
+										? html`<canvas ref=${el => (canvasRef = el)}></canvas>
+												<p class="text-gray-500 text-sm mt-6 italic text-center text-xs">
+													Last updated: ${new Date().toISOString()}
+												</p>`
+										: html`
+												<div
+													class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
+												>
+													No data available for ${props.name}.
+												</div>
+										  `
+								}
+							</div>
 						</div>
 					</div>
 				`;
-		}
-
-		function App() {
-			const [sensorsData, setSensorsData] = createSignal({});
-			const [loading, setLoading] = createSignal(true);
-			const [errors, setErrors] = createSignal({});
-
-			async function fetchAllSensors() {
-				setLoading(true);
-
-				const newData = {};
-				const newErrors = {};
-
-				for (const sensor of SENSORS) {
-					const data = await fetchSensor(sensor.name);
-
-					if (!data) {
-						newErrors[sensor.name] = `Failed to fetch data for ${sensor}.`;
-						continue;
-					}
-
-					const sensorData = data
-						.split('\n')
-						.filter(line => line.trim())
-						.map(line => line.split('|').map(value => value.trim()));
-
-					if (sensorData.length === 0) {
-						newErrors[sensor.name] = `No data available for ${sensor}.`;
-					} else {
-						newData[sensor.name] = sensorData;
-					}
-				}
-
-				setSensorsData(newData);
-				setErrors(newErrors);
-
-				setLoading(false);
 			}
 
-			onMount(() => {
-				fetchAllSensors();
+			function App() {
+				const [sensorsData, setSensorsData] = createSignal({});
+				const [loading, setLoading] = createSignal(true);
+				const [errors, setErrors] = createSignal({});
 
-				// Refresh data every 15 minutes
-				setInterval(fetchAllSensors, 15 * 60 * 1000);
-			});
+				async function fetchAllSensors() {
+					setLoading(true);
 
-			return html`
+					const newData = {};
+					const newErrors = {};
+
+					for (const sensor of SENSORS) {
+						const data = await fetchSensor(sensor.name);
+
+						if (!data) {
+							newErrors[sensor.name] = `Failed to fetch data for ${sensor}.`;
+							continue;
+						}
+
+						const sensorData = data
+							.split('\n')
+							.filter(line => line.trim())
+							.map(line => line.split('|').map(value => value.trim()));
+
+						if (sensorData.length === 0) {
+							newErrors[sensor.name] = `No data available for ${sensor}.`;
+						} else {
+							newData[sensor.name] = sensorData;
+						}
+					}
+
+					setSensorsData(newData);
+					setErrors(newErrors);
+
+					setLoading(false);
+				}
+
+				onMount(() => {
+					fetchAllSensors();
+
+					// Refresh data every 15 minutes
+					setInterval(fetchAllSensors, 15 * 60 * 1000);
+				});
+
+				return html`
 					<div class="container mx-auto px-4 py-8 max-w-8xl">
 						<h1 class="text-3xl font-bold text-gray-900 mb-6">Sensors at home</h1>
 
@@ -248,20 +336,19 @@
 
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 							${() =>
-					!loading() &&
-					SENSORS.map(sensor =>
-						SensorCard({
-							...sensor,
-							data: sensorsData()[sensor.name] || [],
-						}),
-					)}
+								!loading() &&
+								SENSORS.map(sensor =>
+									SensorCard({
+										...sensor,
+										data: sensorsData()[sensor.name] || [],
+									}),
+								)}
 						</div>
 					</div>
 				`;
-		}
+			}
 
-		render(App, document.body);
-	</script>
-</body>
-
+			render(App, document.body);
+		</script>
+	</body>
 </html>

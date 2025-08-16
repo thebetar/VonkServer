@@ -9,8 +9,18 @@
 #include "http.h"
 #include "utils.h"
 
-#define MAX_REQUEST_SIZE 2048           // Maximum size for incoming HTTP request (2KiB)
-#define MAX_RESPONSE_SIZE 1048576 * 2   // Maximum size for HTTP response (2MiB)
+#define MAX_REQUEST_SIZE 2048         // Maximum size for incoming HTTP request (2KiB)
+#define MAX_RESPONSE_SIZE 1048576 * 2 // Maximum size for HTTP response (2MiB)
+
+char allowed_urls[][32] = {
+    "temperature",
+    "humidity",
+    "light",
+    "air_quality",
+    "co",
+    "sensors",
+    "wifi_occupancy",
+};
 
 char *get_headers(char *message, char *content_type)
 {
@@ -117,6 +127,19 @@ struct client_request_data receive_data(int client_socket)
     return result;
 }
 
+bool check_url_allowed(const char *url)
+{
+    // Check if the URL is in the allowed URLs list
+    for (size_t i = 0; i < sizeof(allowed_urls) / sizeof(allowed_urls[0]); i++)
+    {
+        if (strcmp(url, allowed_urls[i]) == 0)
+        {
+            return true; // URL is allowed
+        }
+    }
+    return false; // URL is not allowed
+}
+
 void send_data(int client_socket, struct client_request_data request_data)
 {
     // This function is not used in this example, but can be implemented if needed.
@@ -184,11 +207,7 @@ void send_data(int client_socket, struct client_request_data request_data)
 
     // Check if temperature or humidity
     if (
-        strcmp(request_data.url, "temperature") != 0 &&
-        strcmp(request_data.url, "humidity") != 0 &&
-        strcmp(request_data.url, "light") != 0 &&
-        strcmp(request_data.url, "air_quality") != 0 &&
-        strcmp(request_data.url, "co"))
+        !check_url_allowed(request_data.url))
     {
         message = "STATUS: Invalid URL";
         printf("Error: %s\n", message);
