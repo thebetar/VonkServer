@@ -5,12 +5,27 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Sensors</title>
 		<script src="https://cdn.tailwindcss.com"></script>
+		<style>
+			@media (max-width: 1600px) {
+				.sensor-header {
+					font-size: 1.5rem !important;
+					text-align: center !important;
+				}
+			}
+		</style>
 	</head>
 
 	<body class="bg-gray-50">
 		<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 		<script type="module">
-			import { onMount, createSignal, createEffect, For, createMemo } from 'https://esm.sh/solid-js@1.8.1';
+			import {
+				onMount,
+				onCleanup,
+				createSignal,
+				createEffect,
+				For,
+				createMemo,
+			} from 'https://esm.sh/solid-js@1.8.1';
 			import { render } from 'https://esm.sh/solid-js@1.8.1/web';
 			import html from 'https://esm.sh/solid-js@1.8.1/html';
 
@@ -125,13 +140,24 @@
 				let canvasRef;
 				let chartInstance;
 
-				onMount(() => {
+				createEffect(() => {
+					// Clean up existing chart before re-creating or if data/canvas is missing
+					if (chartInstance) {
+						chartInstance.destroy();
+						chartInstance = null;
+					}
+
+					// If no data or ref, stop here
 					if (!canvasRef || props.data.length === 0) {
 						return;
 					}
 
 					const ctx = canvasRef.getContext('2d');
 					const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
+					const values = props.data.map(value => value[0] || 0);
+
+					// Determine if we should hide labels based on screen size
+					const hideLabels = window.innerWidth < 1600 || window.innerHeight < 900;
 
 					chartInstance = new Chart(ctx, {
 						type: 'line',
@@ -140,7 +166,7 @@
 							datasets: [
 								{
 									label: props.name,
-									data: props.data.map(value => value[0] || 0),
+									data: values,
 									borderColor: props.color,
 									backgroundColor: props.color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
 									tension: 0.1,
@@ -149,6 +175,7 @@
 						},
 						options: {
 							responsive: true,
+							maintainAspectRatio: false,
 							plugins: {
 								title: {
 									display: true,
@@ -169,6 +196,7 @@
 								},
 								x: {
 									ticks: {
+										display: !hideLabels,
 										font: {
 											size: 10,
 										},
@@ -179,15 +207,11 @@
 					});
 				});
 
-				createEffect(() => {
-					if (!chartInstance || props.data.length == 0) {
-						return;
+				onCleanup(() => {
+					if (chartInstance) {
+						chartInstance.destroy();
+						chartInstance = null;
 					}
-
-					const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
-					chartInstance.data.labels = labels;
-					chartInstance.data.datasets[0].data = props.data.map(value => value[0] || 0);
-					chartInstance.update();
 				});
 
 				function showWarning() {
@@ -210,13 +234,15 @@
 					<div id="chart-${props.name}" class="bg-white rounded-lg shadow-md pt-4 px-4 pb-2">
 						<h3
 							class=${() =>
-								`2xl:text-2xl 2xl:text-center text-lg text-left font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}
+								`text-lg font-semibold mb-2 sensor-header ${
+									showWarning() ? 'text-red-500' : 'text-gray-800'
+								}`}
 						>
 							${props.name.charAt(0).toUpperCase() + props.name.slice(1)}
 						</h3>
 
 						<div class="text-center">
-							<p class="text-gray-600 text-sm 2xl:hidden block">
+							<p class="text-gray-600 text-sm mb-2">
 								${showWarning()
 									? html` <span class="text-red-500">${props.warning}</span> `
 									: html`
@@ -228,10 +254,12 @@
 										`}
 							</p>
 
-							<div class="2xl:mt-2 mt-4">
+							<div class="mt-4">
 								${props.data.length > 0
-									? html`<canvas ref=${el => (canvasRef = el)}></canvas>
-											<p class="text-gray-500 mt-6 italic text-center text-xs 2xl:hidden block">
+									? html`<div style="height: 300px; position: relative">
+												<canvas ref=${el => (canvasRef = el)}></canvas>
+											</div>
+											<p class="text-gray-500 text-sm mt-6 italic text-center text-xs">
 												Last updated: ${new Date().toISOString()}
 											</p>`
 									: html`
