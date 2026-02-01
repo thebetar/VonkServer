@@ -11,6 +11,10 @@
 					font-size: 1.5rem !important;
 					text-align: center !important;
 				}
+
+				.sensor-hint {
+					display: none !important;
+				}
 			}
 		</style>
 	</head>
@@ -68,7 +72,14 @@
 			// Date range defaults: start = today - 2 years, end = today
 			const today = new Date();
 			const start = new Date(today);
-			start.setFullYear(today.getFullYear() - 2);
+
+			if (window.innerWidth <= 1600) {
+				// For smaller screens, default to last 6 months
+				start.setDate(today.getDate() - 2);
+			} else {
+				// For larger screens, default to last 2 years
+				start.setFullYear(today.getFullYear() - 2);
+			}
 
 			// Date range state
 			const [minDay, setMinDay] = createSignal(start.getDate());
@@ -156,9 +167,6 @@
 					const labels = props.data.map(value => parseDateString(value[1]) || 'N/A');
 					const values = props.data.map(value => value[0] || 0);
 
-					// Determine if we should hide labels based on screen size
-					const hideLabels = window.innerWidth < 1600 || window.innerHeight < 900;
-
 					chartInstance = new Chart(ctx, {
 						type: 'line',
 						data: {
@@ -196,7 +204,6 @@
 								},
 								x: {
 									ticks: {
-										display: !hideLabels,
 										font: {
 											size: 10,
 										},
@@ -234,13 +241,13 @@
 					<div id=${'chart-' + props.name} class="bg-white rounded-lg shadow-md pt-4 px-4 pb-2">
 						<h3
 							class=${() =>
-								`text-lg font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}
+								`sensor-header text-lg font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}
 						>
 							${props.name.charAt(0).toUpperCase() + props.name.slice(1)}
 						</h3>
 
 						<div class="text-center">
-							<p class="text-gray-600 text-sm mb-2">
+							<p class="sensor-hint text-gray-600 text-sm mb-2">
 								${showWarning()
 									? html` <span class="text-red-500">${props.warning}</span> `
 									: html`
