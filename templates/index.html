@@ -231,12 +231,10 @@
 				}
 
 				return html`
-					<div id="chart-${props.name}" class="bg-white rounded-lg shadow-md pt-4 px-4 pb-2">
+					<div id=${'chart-' + props.name} class="bg-white rounded-lg shadow-md pt-4 px-4 pb-2">
 						<h3
 							class=${() =>
-								`text-lg font-semibold mb-2 sensor-header ${
-									showWarning() ? 'text-red-500' : 'text-gray-800'
-								}`}
+								`text-lg font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}
 						>
 							${props.name.charAt(0).toUpperCase() + props.name.slice(1)}
 						</h3>
