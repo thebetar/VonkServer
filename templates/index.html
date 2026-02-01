@@ -147,6 +147,10 @@
 				});
 			}
 
+			function capitaliseText(text) {
+				return (text.charAt(0).toUpperCase() + text.slice(1)).replace('_', ' ');
+			}
+
 			function SensorCard(props) {
 				let canvasRef;
 				let chartInstance;
@@ -187,7 +191,7 @@
 							plugins: {
 								title: {
 									display: true,
-									text: `Latest ${props.name.charAt(0).toUpperCase() + props.name.slice(1)} Data`,
+									text: `Latest ${capitaliseText(props.name)} Data`,
 								},
 								legend: {
 									display: false,
@@ -197,9 +201,7 @@
 								y: {
 									title: {
 										display: true,
-										text: `${props.name.charAt(0).toUpperCase() + props.name.slice(1)} (${
-											props.unit
-										})`,
+										text: `${capitaliseText(props.name)} (${props.unit})`,
 									},
 								},
 								x: {
@@ -243,7 +245,7 @@
 							class=${() =>
 								`sensor-header text-lg font-semibold mb-2 ${showWarning() ? 'text-red-500' : 'text-gray-800'}`}
 						>
-							${props.name.charAt(0).toUpperCase() + props.name.slice(1)}
+							${capitaliseText(props.name)}
 						</h3>
 
 						<div class="text-center">
